@@ -1,0 +1,35 @@
+{{ id }} .titles text {
+	fill: black;
+	font-family: sans;
+	font-size: 25px;
+	y: 50px;
+}
+
+{{ id }} .axis .guide.line {
+	stroke-dasharray: 4,4;
+}
+
+{{ id }} .axis .major.guide.line {
+	stroke-dasharray: none;
+	stroke: #999;
+}
+
+{{ id }} .axis.y .guides:hover .guide.line,
+{{ id }} .axis.y2 .guides:hover .guide.line,
+{{ id }} .axis.x .guides:hover .guide.line {
+	stroke: #b33636;
+}
+
+{{ id }}.axis .guides text {
+	font-family: sans;
+}
+
+{{ id }} .tooltip rect {
+	fill: #802626;
+	stroke: transparent;
+}
+
+{{ id }} .tooltip text {
+	fill: #fff;
+	font-family: sans;
+}

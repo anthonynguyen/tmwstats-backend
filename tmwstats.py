@@ -1,5 +1,7 @@
-import os
+import datetime
 from flask import Flask
+import os
+import pygal
 import re
 import threading
 import time
@@ -12,53 +14,63 @@ GMs = []
 
 def create_app():
 	app = Flask(__name__)
-	
-	def doScan():
-		global normalUsers
-		global GMs
-		
-		threading.Timer(900.00, doScan).start()
-		
-		curTime = time.time()
-		req = urllib2.urlopen("http://server.themanaworld.org")
-		rawHTML = req.read()
-		
-		allUsers = re.findall(r'\<td\>(.+?)\</td\>', rawHTML)
-		numUsers = len(allUsers)
-		GMs = []
-		normalUsers = []
-			
-		for user in allUsers:
-			m = re.match(r'\<b\>(.+?)\<\/b\> \(GM\)', user)
-			if m is not None:
-				GMs.append(m.group(1))
-			else:
-				normalUsers.append(user)
-		
-		scandata = {"allplayers": numUsers, "gms": len(GMs), "time": curTime}
-		db_init.db["scans"].insert(scandata)
-
-		for user in normalUsers:
-			dbUser = db_init.db["normals"].find_one({"charname": user})
-			if dbUser is None:
-				db_init.db["normals"].insert({"charname": user, "sightings": 1, "last_seen": curTime})
-			else:
-				db_init.db["normals"].update({"charname": user}, {"$set": {"sightings": dbUser["sightings"] + 1, "time": curTime}})
-			
-		for gm in GMs:
-			dbGM = db_init.db["gms"].find_one({"charname": gm})
-			if dbGM is None:
-				db_init.db["gms"].insert({"charname": gm, "sightings": 1, "last_seen": curTime})
-			else:
-				db_init.db["gms"].update({"charname": gm}, {"$set": {"sightings": dbGM["sightings"] + 1, "time": curTime}})
-	
-	threading.Timer(900.00, doScan).start()
 	return app
 
 app = create_app()
 
-@app.route('/')
+@app.route('/ggraph')
+def getgraph():
+	playerNums = []
+	ct = time.time()
+	cur = db_init.db["scans"].find({"time": {"$gt": ct-86499}}).sort([("time", -1)]).limit(96)
+	ltime = cur[0]["time"]
+	ftime = cur[cur.count(True) - 1]["time"]
+	numScans = int((ltime-ftime)/900) + 1
+	ftime = int(ftime)
+	for r in cur:
+		playerNums.append(r["allplayers"])
+	playerNums.reverse()
+	
+	pRange = max(playerNums) - min(playerNums)
+	
+	graphConfig = pygal.Config(
+		style = pygal.style.Style(
+			background = "#f7f7f7",
+			plot_background = "transparent",
+			foreground = "#777",
+			foreground_light = "#222",
+			foreground_dark = "#ddd",
+			opacity = "0",
+			opacity_hover = "0",
+			colors = ("#b33636", "#b33636")
+		),
+		x_labels_major_count = 5,
+		show_minor_x_labels = False,
+		truncate_label = 20,
+		title = "Number of players (last day)",
+		interpolate = "cubic",
+		range = (min(playerNums) - pRange/4, max(playerNums) + pRange/4),
+		show_legend = False,
+		width = 780,
+		height = 450,
+		explicit_size = True,
+		fill = False,
+		pretty_print = True,
+		margin = 50,
+		show_y_guides = True,
+		dots_size = 2.0
+	)
+	
+	graphConfig.css.append("graphs.css")
+	
+	chart = pygal.Line(config = graphConfig)
+	chart.x_labels =  [datetime.datetime.fromtimestamp(x).strftime('%Y/%m/%d %H:%M') for x in range(ftime, numScans * 900 + ftime, 900)]
+	chart.add("Players", playerNums)
+	
+	
+	return chart.render()
+	
+
+@app.route("/")
 def main():
-	global GMs
-	global normalUsers
-	return "GMs:<br /> <b>{0}</b> <br /><br /><br />Players:<br />{1}".format("<br />".join(GMs), "<br />".join(normalUsers))
+	return "<object type=\"image/svg+xml\" data=\"/ggraph\"></object>"
