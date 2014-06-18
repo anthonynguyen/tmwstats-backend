@@ -41,14 +41,14 @@ def create_app():
 		for user in normalUsers:
 			dbUser = db_init.db["normals"].find_one({"charname": user})
 			if dbUser is None:
-				db_init.db["normals"].insert({"charname": user, "sightings": 1, "last_seen": curTime})
+				db_init.db["normals"].insert({"charname": user, "charid": user.lower(), "sightings": 1, "last_seen": curTime})
 			else:
 				db_init.db["normals"].update({"charname": user}, {"$set": {"sightings": dbUser["sightings"] + 1, "time": curTime}})
 			
 		for gm in GMs:
 			dbGM = db_init.db["gms"].find_one({"charname": gm})
 			if dbGM is None:
-				db_init.db["gms"].insert({"charname": gm, "sightings": 1, "last_seen": curTime})
+				db_init.db["gms"].insert({"charname": gm, "charid": gm.lower(), "sightings": 1, "last_seen": curTime})
 			else:
 				db_init.db["gms"].update({"charname": gm}, {"$set": {"sightings": dbGM["sightings"] + 1, "time": curTime}})
 	
